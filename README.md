@@ -1,15 +1,17 @@
-# Contribution [#]: [Issue Title]
+# Contribution 1: Tests in `swift package init --type executable --enable-swift-testing` have no test target
 
-**Contribution Number:** [1 / 2 / 3]  
-**Student:** [Your Name]  
-**Issue:** [GitHub issue link]  
-**Status:** [Phase I / Phase II / Phase III / Phase IV] [In Progress / Complete]
+**Contribution Number:** 1  
+**Student:** Huy Hoang  
+**Issue:** https://github.com/swiftlang/swift-package-manager/issues/9149  
+**Status:** Phase I Complete
 
 ---
 
 ## Why I Chose This Issue
 
-[1-2 paragraphs explaining why this issue interests you, how it matches your skills/learning goals, what you hope to learn]
+I chose this issue because it has a clear and specific bug: running `swift package init --type executable --enable-swift-testing` creates a `Tests` directory, but the generated `Package.swift` file does not include a corresponding test target. This makes the issue easier to reason about because the expected behavior and current behavior are both clearly described in the GitHub issue.
+
+This issue also matches my goals for this contribution cycle because it is labeled as a good first issue and focuses on a bounded part of Swift Package Manager: package initialization and template generation. I want to learn more about how SwiftPM generates package manifests, how tests are structured in a large open-source Swift project, and how to make a small but meaningful fix in a production developer tool.
 
 ---
 
