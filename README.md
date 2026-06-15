@@ -1,17 +1,17 @@
-# Contribution 1: Tests in `swift package init --type executable --enable-swift-testing` have no test target
+# Contribution 1: Use dynamic reconfigure in whistle detector
 
 **Contribution Number:** 1  
 **Student:** Huy Hoang  
-**Issue:** https://github.com/swiftlang/swift-package-manager/issues/9149  
+**Issue:** https://github.com/bit-bots/bitbots_main/issues/776  
 **Status:** Phase I Complete
 
 ---
 
 ## Why I Chose This Issue
 
-I chose this issue because it has a clear and specific bug: running `swift package init --type executable --enable-swift-testing` creates a `Tests` directory, but the generated `Package.swift` file does not include a corresponding test target. This makes the issue easier to reason about because the expected behavior and current behavior are both clearly described in the GitHub issue.
+I chose this issue because it is a well-scoped enhancement to a real robotics codebase used by the Hamburg Bit-Bots RoboCup team. The goal is to add dynamic reconfiguration to the whistle detector module so that parameters like the threshold for whistle energy vs. overall energy can be adjusted at runtime without restarting the node. This makes the issue appealing because the expected outcome is concrete and the scope is bounded to a single module.
 
-This issue also matches my goals for this contribution cycle because it is labeled as a good first issue and focuses on a bounded part of Swift Package Manager: package initialization and template generation. I want to learn more about how SwiftPM generates package manifests, how tests are structured in a large open-source Swift project, and how to make a small but meaningful fix in a production developer tool.
+This issue also matches my goals for this contribution cycle because it is labeled as a good first issue and gives me hands-on experience with ROS 2 and the `dynamic_reconfigure` pattern used in robotics software. I want to learn how parameter management works in a production ROS 2 project and how to make a meaningful contribution to an active open-source robotics team.
 
 ---
 
