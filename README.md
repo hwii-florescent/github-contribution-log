@@ -3,7 +3,7 @@
 **Contribution Number:** 1  
 **Student:** Huy Hoang  
 **Issue:** https://github.com/bit-bots/bitbots_main/issues/776  
-**Status:** Phase I Complete
+**Status:** Phase II Complete
 
 ---
 
@@ -19,19 +19,24 @@ This issue also matches my goals for this contribution cycle because it is label
 
 ### Problem Description
 
-[In your own words, what's broken or missing?]
+The `bitbots_whistle_detector` node detects whistles by comparing the energy in the whistle frequency band (2000–4500 Hz) to total audio energy using FFT. When this ratio exceeds a threshold, it publishes a detection event. However, the threshold (`0.6`) and frequency band bounds (`2000`, `4500`) are all hardcoded constants in the source file. There is no way to change these values without editing the Python source and rebuilding the package.
 
 ### Expected Behavior
 
-[What should happen?]
+A robot operator or developer should be able to adjust the detection threshold (and optionally the frequency band) at runtime without modifying source code or restarting the node — for example, with `ros2 param set /whistle_detector whistle_energy_ratio_threshold 0.8`.
 
 ### Current Behavior
 
-[What actually happens?]
+The node exposes no user-facing ROS 2 parameters. Running `ros2 param list /whistle_detector` shows only the built-in ROS internals. Attempting `ros2 param set /whistle_detector whistle_energy_ratio_threshold 0.8` fails with:
+```
+Setting parameter failed: parameter 'whistle_energy_ratio_threshold' is not declared
+```
 
 ### Affected Components
 
-[Which parts of the codebase are involved?]
+- **Primary file:** `src/bitbots_misc/bitbots_whistle_detector/bitbots_whistle_detector/whistle_detector.py`
+  - `WhistleDetector.__init__()` — where parameters should be declared
+  - `WhistleDetector.detect_whistle()` — where hardcoded values `0.6`, `2000`, `4500` are used
 
 ---
 
@@ -39,19 +44,53 @@ This issue also matches my goals for this contribution cycle because it is label
 
 ### Environment Setup
 
-[Notes on setting up your local development environment - challenges you faced, how you solved them]
+The project uses **pixi** for dependency management — no system-wide ROS 2 installation or Docker required. ROS 2 Jazzy is the supported version.
+
+1. Install pixi (if not already installed):
+   ```bash
+   curl -fsSL https://pixi.sh/install.sh | bash
+   # Restart terminal or run: export PATH="$HOME/.pixi/bin:$PATH"
+   ```
+2. Clone your fork and build:
+   ```bash
+   git clone https://github.com/hwii-florescent/bitbots_main.git
+   cd bitbots_main
+   pixi run build   # Downloads all ROS 2 dependencies automatically
+   ```
+3. Activate the pixi shell for subsequent ROS 2 commands:
+   ```bash
+   pixi shell
+   ```
 
 ### Steps to Reproduce
 
-1. [Step 1]
-2. [Step 2]
-3. [Observed result]
+1. After completing environment setup, launch the whistle detector node:
+   ```bash
+   ros2 run bitbots_whistle_detector whistle_detector
+   ```
+2. In a second terminal (with pixi shell active), list its parameters:
+   ```bash
+   ros2 param list /whistle_detector
+   ```
+   Observe: only built-in ROS 2 internals are listed — no custom parameters.
+
+3. Attempt to set the detection threshold at runtime:
+   ```bash
+   ros2 param set /whistle_detector whistle_energy_ratio_threshold 0.8
+   ```
+   **Observed result:** `Setting parameter failed: parameter 'whistle_energy_ratio_threshold' is not declared`
+
+4. Open `src/bitbots_misc/bitbots_whistle_detector/bitbots_whistle_detector/whistle_detector.py` and locate the `detect_whistle()` method. The threshold is hardcoded on the final line:
+   ```python
+   return ratio > 0.6  # hardcoded — cannot be changed at runtime
+   ```
+   Similarly, the frequency band bounds `2000` and `4500` are hardcoded two lines above.
 
 ### Reproduction Evidence
 
-- **Commit showing reproduction:** [Link to commit in your fork]
-- **Screenshots/logs:** [If applicable]
-- **My findings:** [What you discovered during reproduction]
+- **Branch:** https://github.com/hwii-florescent/bitbots_main/tree/fix-issue-776
+- **Screenshots/logs:** See step 3 above — `ros2 param set` failure message confirms no parameters declared
+- **My findings:** All detection parameters (`0.6` ratio threshold, `2000–4500 Hz` band) are Python constants defined directly in `whistle_detector.py`. The node never calls `declare_parameter()`, so ROS 2 has no knowledge of them and they cannot be changed at runtime.
 
 ---
 
@@ -59,30 +98,40 @@ This issue also matches my goals for this contribution cycle because it is label
 
 ### Analysis
 
-[Your analysis of the root cause - what's causing the issue?]
+The root cause is in `whistle_detector.py`. The `WhistleDetector.__init__()` method never calls `declare_parameter()`, so ROS 2's parameter system is unaware of the detection settings. The hardcoded values live directly in `detect_whistle()` as Python literals (`0.6`, `2000`, `4500`).
 
 ### Proposed Solution
 
-[High-level description of your fix approach]
+Use ROS 2's native parameter system: declare named parameters with defaults matching the current hardcoded values, read them into instance attributes on startup, and register a callback so that changes made via `ros2 param set` are applied immediately without restarting the node.
 
 ### Implementation Plan
 
 Using UMPIRE framework (adapted):
 
-**Understand:** [Restate the problem]
+**Understand:** The `detect_whistle()` method computes the FFT of a 512-sample audio buffer, sums energy in the 2000–4500 Hz band, divides by total energy, and compares to `0.6`. All three numeric values are literals — inaccessible to ROS 2's parameter system and unchangeable at runtime.
 
-**Match:** [What similar patterns/solutions exist in the codebase?]
+**Match:** ROS 2 nodes natively support runtime parameters via `declare_parameter()` and live updates via `add_on_set_parameters_callback()`. This pattern requires no new dependencies — `rcl_interfaces` ships with every ROS 2 installation and is already available in this workspace.
 
-**Plan:** [Step-by-step implementation plan]
-1. [Modify file X to do Y]
-2. [Add function Z]
-3. [Update tests]
+**Plan:**
+1. Add import: `from rcl_interfaces.msg import SetParametersResult` and `from rclpy.parameter import Parameter` in `whistle_detector.py`
+2. In `WhistleDetector.__init__()`, after `super().__init__("whistle_detector")`, declare three parameters:
+   - `self.declare_parameter("whistle_energy_ratio_threshold", 0.6)`
+   - `self.declare_parameter("whistle_frequency_min_hz", 2000)`
+   - `self.declare_parameter("whistle_frequency_max_hz", 4500)`
+3. Load initial values into instance attributes (`self.threshold`, `self.freq_min`, `self.freq_max`) via `get_parameter(...).value`
+4. Register `self.add_on_set_parameters_callback(self._on_params_change)`
+5. Add `_on_params_change(self, params)` method that validates each param by name and type, updates the corresponding instance attribute, and returns `SetParametersResult(successful=True)`
+6. In `detect_whistle()`, replace `2000`, `4500`, and `0.6` with `self.freq_min`, `self.freq_max`, and `self.threshold`
 
-**Implement:** [Link to your branch/commits as you work]
+**Implement:** https://github.com/hwii-florescent/bitbots_main/tree/fix-issue-776 *(code changes in Phase III)*
 
-**Review:** [Self-review checklist - does it follow the project's contribution guidelines?]
+**Review:** Run `pixi run format` before committing. Confirm the commit message follows the repo's conventions (checked via recent commit history). Verify no CONTRIBUTING.md rules are violated.
 
-**Evaluate:** [How will you verify it works?]
+**Evaluate:**
+- `ros2 param list /whistle_detector` shows `whistle_energy_ratio_threshold`, `whistle_frequency_min_hz`, `whistle_frequency_max_hz`
+- `ros2 param set /whistle_detector whistle_energy_ratio_threshold 0.8` succeeds and the node logger confirms the update
+- Default behavior is identical to before when no parameters are overridden
+- `pixi run test --pkg bitbots_whistle_detector` passes with no regressions
 
 ---
 
