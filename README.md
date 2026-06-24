@@ -3,7 +3,7 @@
 **Contribution Number:** 1  
 **Student:** Huy Hoang  
 **Issue:** https://github.com/bit-bots/bitbots_main/issues/776  
-**Status:** Phase II Complete
+**Status:** Phase III Complete
 
 ---
 
@@ -110,20 +110,15 @@ Using UMPIRE framework (adapted):
 
 **Understand:** The `detect_whistle()` method computes the FFT of a 512-sample audio buffer, sums energy in the 2000–4500 Hz band, divides by total energy, and compares to `0.6`. All three numeric values are literals — inaccessible to ROS 2's parameter system and unchangeable at runtime.
 
-**Match:** ROS 2 nodes natively support runtime parameters via `declare_parameter()` and live updates via `add_on_set_parameters_callback()`. This pattern requires no new dependencies — `rcl_interfaces` ships with every ROS 2 installation and is already available in this workspace.
+**Match:** After reviewing issue comments from the maintainer (Flova), the correct approach is the **`generate_parameter_library`** (piknik) library, not plain `declare_parameter`. The `bitbots_ball_filter` package in this repo is the canonical Python example — it uses `ParamListener` generated from a YAML definition file to handle parameter loading and live updates.
 
 **Plan:**
-1. Add import: `from rcl_interfaces.msg import SetParametersResult` and `from rclpy.parameter import Parameter` in `whistle_detector.py`
-2. In `WhistleDetector.__init__()`, after `super().__init__("whistle_detector")`, declare three parameters:
-   - `self.declare_parameter("whistle_energy_ratio_threshold", 0.6)`
-   - `self.declare_parameter("whistle_frequency_min_hz", 2000)`
-   - `self.declare_parameter("whistle_frequency_max_hz", 4500)`
-3. Load initial values into instance attributes (`self.threshold`, `self.freq_min`, `self.freq_max`) via `get_parameter(...).value`
-4. Register `self.add_on_set_parameters_callback(self._on_params_change)`
-5. Add `_on_params_change(self, params)` method that validates each param by name and type, updates the corresponding instance attribute, and returns `SetParametersResult(successful=True)`
-6. In `detect_whistle()`, replace `2000`, `4500`, and `0.6` with `self.freq_min`, `self.freq_max`, and `self.threshold`
+1. Create `config/whistle_detector_parameters.yaml` defining four parameters with types, defaults, descriptions, and validation bounds: `whistle_energy_ratio_threshold` (double, 0.0–1.0), `whistle_frequency_min_hz` (int), `whistle_frequency_max_hz` (int), and `chunk_size` (int, read-only)
+2. Update `setup.py` to call `generate_parameter_module("whistle_detector_parameters", "config/whistle_detector_parameters.yaml")` — this generates the Python parameter class at build time
+3. Add `<depend>generate_parameter_library</depend>` to `package.xml`
+4. In `whistle_detector.py`: import the generated module, replace `self.chunk_size = 512` with `self.param_listener = parameters.ParamListener(self)` + `self.config = self.param_listener.get_params()`, add `is_old()` / `refresh_dynamic_parameters()` / `get_params()` refresh at the top of `process_audio()`, and replace all hardcoded values with `self.config.*`
 
-**Implement:** https://github.com/hwii-florescent/bitbots_main/tree/fix-issue-776 *(code changes in Phase III)*
+**Implement:** https://github.com/hwii-florescent/bitbots_main/tree/fix-issue-776
 
 **Review:** Run `pixi run format` before committing. Confirm the commit message follows the repo's conventions (checked via recent commit history). Verify no CONTRIBUTING.md rules are violated.
 
@@ -139,30 +134,38 @@ Using UMPIRE framework (adapted):
 
 ### Unit Tests
 
-- [ ] Test case 1: [Description]
-- [ ] Test case 2: [Description]
-- [ ] Test case 3: [Description]
+- [ ] Test default parameter values match hardcoded originals (threshold=0.6, freq_min=2000, freq_max=4500, chunk_size=512)
+- [ ] Test that `detect_whistle` returns True when ratio exceeds threshold, False when below
+- [ ] Test that `detect_whistle` returns False when total_energy is 0
 
 ### Integration Tests
 
-- [ ] Integration scenario 1
-- [ ] Integration scenario 2
+- [ ] Launch node, verify `ros2 param list` exposes all four parameters
+- [ ] Set `whistle_energy_ratio_threshold` to 0.9 via `ros2 param set`, confirm node picks up the new value without restart
 
 ### Manual Testing
 
-[What you tested manually and results]
+Verified by running `ros2 param list /whistle_detector` after build and confirming all four parameters are declared, and `ros2 param set` succeeds for the non-read-only parameters.
 
 ---
 
 ## Implementation Notes
 
-### Week [X] Progress
+### Week 1 Progress
 
-[What you built this week, challenges faced, decisions made]
+Completed Phase III implementation. Key challenge: the maintainer (Flova) specified using the `generate_parameter_library` (piknik) library rather than plain `declare_parameter` — discovered this by reading the issue comments carefully. Used `bitbots_ball_filter` as the reference Python implementation to understand the pattern (`ParamListener`, `is_old()`, `refresh_dynamic_parameters()`, `get_params()`).
 
-### Week [Y] Progress
+Decision: exposed `chunk_size` as `read_only: True` based on a comment from jaagut — it can be set at launch time but not live-swapped, since runtime buffer resizing would add unnecessary complexity for a first contribution.
 
-[Continue documenting as you work]
+### Code Changes
+
+- **Files modified:**
+  - `src/bitbots_misc/bitbots_whistle_detector/config/whistle_detector_parameters.yaml` *(created)*
+  - `src/bitbots_misc/bitbots_whistle_detector/setup.py`
+  - `src/bitbots_misc/bitbots_whistle_detector/package.xml`
+  - `src/bitbots_misc/bitbots_whistle_detector/bitbots_whistle_detector/whistle_detector.py`
+- **Key commits:** https://github.com/hwii-florescent/bitbots_main/tree/fix-issue-776
+- **Approach decisions:** Used `generate_parameter_library` per maintainer request; `chunk_size` marked `read_only` to avoid runtime buffer-resize complexity
 
 ### Code Changes
 
