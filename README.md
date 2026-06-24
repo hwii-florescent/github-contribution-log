@@ -177,7 +177,7 @@ Decision: exposed `chunk_size` as `read_only: True` based on a comment from jaag
 
 ## Pull Request
 
-**PR Link:** [GitHub PR URL when submitted]
+**PR Link:** https://github.com/bit-bots/bitbots_main/pull/932
 
 **PR Description:** [Draft or final PR description - much of the content above can be adapted]
 
