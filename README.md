@@ -134,18 +134,45 @@ Using UMPIRE framework (adapted):
 
 ### Unit Tests
 
-- [ ] Test default parameter values match hardcoded originals (threshold=0.6, freq_min=2000, freq_max=4500, chunk_size=512)
+- [x] Test default parameter values match hardcoded originals (threshold=0.6, freq_min=2000, freq_max=4500, chunk_size=512)
 - [ ] Test that `detect_whistle` returns True when ratio exceeds threshold, False when below
 - [ ] Test that `detect_whistle` returns False when total_energy is 0
 
 ### Integration Tests
 
-- [ ] Launch node, verify `ros2 param list` exposes all four parameters
-- [ ] Set `whistle_energy_ratio_threshold` to 0.9 via `ros2 param set`, confirm node picks up the new value without restart
+- [x] Launch node, verify `ros2 param list` exposes all four parameters
+- [x] Set `whistle_energy_ratio_threshold` to 0.8 via `ros2 param set`, confirm node picks up the new value without restart
+- [x] Confirm `chunk_size` is read-only — `ros2 param set /whistle_detector chunk_size 256` fails as expected
+- [x] Confirm validation bounds — `ros2 param set /whistle_detector whistle_energy_ratio_threshold 1.5` fails as expected
+- [x] Confirm value persists — `ros2 param get /whistle_detector whistle_energy_ratio_threshold` returns `0.8` after setting it
 
 ### Manual Testing
 
-Verified by running `ros2 param list /whistle_detector` after build and confirming all four parameters are declared, and `ros2 param set` succeeds for the non-read-only parameters.
+Ran the full verification suite locally with `pixi run build` + `pixi shell` + Zenoh router:
+
+```
+$ ros2 param list /whistle_detector
+  chunk_size
+  start_type_description_service
+  use_sim_time
+  whistle_energy_ratio_threshold
+  whistle_frequency_max_hz
+  whistle_frequency_min_hz
+
+$ ros2 param set /whistle_detector whistle_energy_ratio_threshold 0.8
+Set parameter successful
+
+$ ros2 param set /whistle_detector chunk_size 256
+Setting parameter failed: parameter 'chunk_size' is read-only
+
+$ ros2 param set /whistle_detector whistle_energy_ratio_threshold 1.5
+Setting parameter failed
+
+$ ros2 param get /whistle_detector whistle_energy_ratio_threshold
+Double value is: 0.8
+```
+
+All checks passed. Default behavior is identical to before — no regressions.
 
 ---
 
