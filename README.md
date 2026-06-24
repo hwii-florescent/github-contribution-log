@@ -135,8 +135,8 @@ Using UMPIRE framework (adapted):
 ### Unit Tests
 
 - [x] Test default parameter values match hardcoded originals (threshold=0.6, freq_min=2000, freq_max=4500, chunk_size=512)
-- [ ] Test that `detect_whistle` returns True when ratio exceeds threshold, False when below
-- [ ] Test that `detect_whistle` returns False when total_energy is 0
+- [x] Test that `detect_whistle` returns True when ratio exceeds threshold, False when below
+- [x] Test that `detect_whistle` returns False when total_energy is 0
 
 ### Integration Tests
 
@@ -193,6 +193,13 @@ Decision: exposed `chunk_size` as `read_only: True` based on a comment from jaag
   - `src/bitbots_misc/bitbots_whistle_detector/bitbots_whistle_detector/whistle_detector.py`
 - **Key commits:** https://github.com/hwii-florescent/bitbots_main/tree/fix-issue-776
 - **Approach decisions:** Used `generate_parameter_library` per maintainer request; `chunk_size` marked `read_only` to avoid runtime buffer-resize complexity
+
+Added 5 pytest unit tests in `test/test_whistle_detector.py` covering:
+- Pure whistle-frequency tone (3000 Hz) triggers detection
+- Non-whistle-frequency tone (100 Hz) does not trigger
+- Silent audio (all zeros) returns False without crash
+- Threshold respected — setting above 1.0 suppresses all detections
+- Frequency bounds respected — narrowing band excludes 3000 Hz tone
 
 ### Code Changes
 
