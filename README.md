@@ -3,7 +3,7 @@
 **Contribution Number:** 1  
 **Student:** Huy Hoang  
 **Issue:** https://github.com/bit-bots/bitbots_main/issues/776  
-**Status:** Phase III Complete
+**Status:** Phase IV Complete — Merged
 
 ---
 
@@ -213,13 +213,14 @@ Added 5 pytest unit tests in `test/test_whistle_detector.py` covering:
 
 **PR Link:** https://github.com/bit-bots/bitbots_main/pull/932
 
-**PR Description:** [Draft or final PR description - much of the content above can be adapted]
+**PR Description:** Added runtime-configurable parameters to the whistle detector using `generate_parameter_library`. The energy ratio threshold, frequency band bounds, and chunk size were previously hardcoded in the source; they are now declarable at launch time and (except chunk_size) adjustable live via `ros2 param set`.
 
 **Maintainer Feedback:**
-- [Date]: [Summary of feedback received]
-- [Date]: [How you addressed it]
+- Flova requested using the `generate_parameter_library` (piknik) library instead of plain `declare_parameter` — updated the implementation accordingly before submitting the PR.
+- jaagut suggested also exposing `chunk_size` as a parameter — included as `read_only: True`.
+- Both jaagut and Flova approved the PR on 2026-06-29.
 
-**Status:** [Awaiting review / Iterating / Approved / Merged]
+**Status:** Merged — 2026-06-29
 
 ---
 
@@ -227,15 +228,21 @@ Added 5 pytest unit tests in `test/test_whistle_detector.py` covering:
 
 ### Technical Skills Gained
 
-[What you learned technically]
+- How ROS 2 parameter management works — `generate_parameter_library`, `ParamListener`, `is_old()`, `refresh_dynamic_parameters()`
+- How to navigate a large unfamiliar ROS 2 monorepo and find existing patterns to replicate
+- Writing pytest unit tests for a ROS 2 node method without needing a live ROS 2 runtime (using `SimpleNamespace` to mock node state)
+- Setting up a ROS 2 development environment from scratch using pixi (no system-wide install)
 
 ### Challenges Overcome
 
-[What was hard and how you solved it]
+- The issue mentioned "pic n nic parameter library" — had to read the maintainer's comment carefully to understand this meant `generate_parameter_library` (piknik), not plain `declare_parameter`. Using the wrong approach would have gotten the PR rejected.
+- Zenoh router: `ros2 param list` showed "Node not found" until I learned that ROS 2 Jazzy requires a running Zenoh router for cross-process node discovery.
+- The devpod's Uber-internal pre-commit hook (`asd-cli`) blocked commits to the external repo — worked around by committing locally.
 
 ### What I'd Do Differently Next Time
 
-[Reflection on your process]
+- Read all issue comments before writing any code — the key constraint (use `generate_parameter_library`) was in a comment, not the issue body.
+- Set up the local dev environment earlier so there's more time for manual testing before the PR deadline.
 
 ---
 
